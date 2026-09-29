@@ -243,7 +243,7 @@ function Spread({ left, video, text, inIllustration = false }: { left: string; v
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
-      {video && !videoFailed && <video ref={videoRef} className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(tokens.current.length)} onError={() => { setVideoFailed(true); setShown(tokens.current.length); }} />}
+      {video && (videoFailed ? <img className="story-spread-video" src={left} alt="" /> : <video ref={videoRef} className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(tokens.current.length)} onError={() => { setVideoFailed(true); setShown(tokens.current.length); }} />)}
       {text && <p className={`story-page-words${inIllustration ? " story-page-words-illustrated" : ""}`} dir="rtl" aria-label={text}>
         {words.split("\n").map((line, i) => <span key={i}>{line}</span>)}
       </p>}
