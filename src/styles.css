@@ -210,3 +210,9 @@ body {
 }
 
 footer, .story-footer { display: none; }
+
+/* keep chrome off the art: hide the floating title on the cover and on short landscape screens */
+.story-booklet-view:has(.story-book-closed) .story-top-bar { visibility: hidden; }
+@media (max-height: 520px) {
+  .story-top-bar { display: none; }
+}
