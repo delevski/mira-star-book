@@ -177,14 +177,19 @@ body {
 .corner-left:hover .corner-fold-left { border-width: 0 58px 58px 0; }
 .corner-right:hover .corner-fold-right { border-width: 58px 58px 0 0; }
 
-/* text floats over the book so the spread can use the full height */
-.story-text-strip {
-  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 7;
-  max-width: min(86vw, 760px); text-align: center; pointer-events: none;
-  background: rgba(20, 24, 60, 0.5); border-radius: 14px;
-  padding: 6px 20px; backdrop-filter: blur(3px);
+/* The words are printed on the right-hand leaf, not in page chrome. */
+.story-page-words {
+  position: absolute; z-index: 4; top: 16%; bottom: 12%; right: 3.7%; width: 30.5%;
+  display: flex; flex-direction: column; justify-content: center;
+  color: #312b29; font-family: "Varela Round", "Arial Hebrew", sans-serif;
+  font-size: clamp(12px, 2.15vw, 25px); line-height: 1.5;
+  text-align: center; white-space: pre-wrap; pointer-events: none;
+  text-shadow: 0 1px rgba(255,255,255,.45);
 }
-.story-text-strip p { font-size: clamp(14px, 2.5vh, 21px); line-height: 1.4; color: #fdf6dd; text-shadow: 0 1px 6px rgba(20, 24, 60, 0.8); }
+.story-page-words span { display: block; }
+@media (max-height: 560px) {
+  .story-page-words { font-size: clamp(10px, 2.4vh, 18px); line-height: 1.3; }
+}
 
 .story-listen-button {
   position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%);
@@ -218,5 +223,5 @@ footer, .story-footer { display: none; }
 }
 
 /* the page clip: one video across the open book, above the still halves, under the chrome */
-.story-spread-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; pointer-events: none; transform: scaleX(-1); }
+.story-spread-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; pointer-events: none;  }
 .story-spine { z-index: 3; }

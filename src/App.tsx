@@ -49,9 +49,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
 
   const atCover = idx === 0;
   const atEnd = idx === total - 1;
-  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/${pages[i - 1].image}`), [dir, booklet.cover, pages]);
+  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i}-poster.webp`), [dir, booklet.cover]);
   const audioSrc = useCallback((i: number) => (i > 0 && pages[i - 1].audio ? `${dir}/${pages[i - 1].audio}` : null), [dir, pages]);
-  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/${pages[i - 1].video}` : undefined), [dir, pages]);
+  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i}-storybook.mp4` : undefined), [dir, pages]);
 
   // preload neighbours
   useEffect(() => {
@@ -155,9 +155,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
                 {toCover ? (
                   <ClosedCover booklet={booklet} src={src(0)} />
                 ) : fromCover ? (
-                  <Spread left={src(1)} video={videoSrc(1)} />
+                  <Spread left={src(1)} />
                 ) : (
-                  <Spread left={src(flippingTo)} video={videoSrc(flippingTo)} />
+                  <Spread left={src(flippingTo)} />
                 )}
                 <UnderShadow dir={flip.dir} />
                 {/* the turning leaf */}
@@ -172,7 +172,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
             ) : atCover ? (
               <ClosedCover booklet={booklet} src={src(0)} />
             ) : (
-              <Spread left={src(idx)} video={videoSrc(idx)} />
+              <Spread key={idx} left={src(idx)} video={videoSrc(idx)} text={pages[idx - 1]?.text} />
             )}
             {idx < total - 1 && !flip && (
               <div className="story-page-corner corner-left" onClick={(e) => { e.stopPropagation(); forward(); }}>
@@ -187,9 +187,6 @@ function BookletView({ booklet }: { booklet: Booklet }) {
           </div>
         </div>
       </div>
-      {!atCover && pages[idx - 1]?.text && (
-        <div className="story-text-strip">{pages[idx - 1].text.split("\n").map((ln, i) => <p key={i}>{ln}</p>)}</div>
-      )}
       {needsTap && !flip && (
         <button type="button" className="story-listen-button" onClick={listenTap} onTouchEnd={(e) => e.stopPropagation()}>🔊 הַקִּישׁוּ לִשְׁמֹעַ</button>
       )}
@@ -213,10 +210,25 @@ function ClosedCover({ booklet, src }: { booklet: Booklet; src: string }) {
   );
 }
 
-function Spread({ left, video }: { left: string; video?: string }) {
-  // one wide 3:1 illustration spanning the two pages of the open book; when the page has a clip,
-  // one video across the whole book paints the illustration, then rests on the finished page
-  // (its last frame is the still underneath, so it never pops)
+function Spread({ left, video, text }: { left: string; video?: string; text?: string }) {
+  // The 11-second film paints the left scene from paper. Real selectable Hebrew is
+  // typeset on the right-hand paper and revealed a grapheme at a time with the art.
+  const [shown, setShown] = useState(0);
+  const glyphs = useRef(Array.from(new Intl.Segmenter("he", { granularity: "grapheme" }).segment(text ?? ""), s => s.segment));
+  useEffect(() => {
+    if (!video || !text) { setShown(glyphs.current.length); return; }
+    const start = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const elapsed = Math.max(0, now - start - 550);
+      const n = Math.min(glyphs.current.length, Math.floor(elapsed / 7350 * glyphs.current.length));
+      setShown(n);
+      if (n < glyphs.current.length) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [video, text]);
+  const words = glyphs.current.slice(0, shown).join("");
   return (
     <div className="story-open-book">
       <div className="story-page story-page-left">
@@ -225,9 +237,10 @@ function Spread({ left, video }: { left: string; video?: string }) {
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
-      {video && (
-        <video key={video} className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" />
-      )}
+      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" />}
+      {text && <p className="story-page-words" dir="rtl" aria-label={text}>
+        {words.split("\n").map((line, i) => <span key={i}>{line}</span>)}
+      </p>}
       <div className="story-spine" aria-hidden="true" />
     </div>
   );
