@@ -215,19 +215,10 @@ function Spread({ left, video, text }: { left: string; video?: string; text?: st
   // typeset on the right-hand paper and revealed a grapheme at a time with the art.
   const [shown, setShown] = useState(0);
   const glyphs = useRef(Array.from(new Intl.Segmenter("he", { granularity: "grapheme" }).segment(text ?? ""), s => s.segment));
-  useEffect(() => {
-    if (!video || !text) { setShown(glyphs.current.length); return; }
-    const start = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const elapsed = Math.max(0, now - start - 550);
-      const n = Math.min(glyphs.current.length, Math.floor(elapsed / 7350 * glyphs.current.length));
-      setShown(n);
-      if (n < glyphs.current.length) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [video, text]);
+  const advance = (seconds: number) => {
+    setShown(Math.min(glyphs.current.length, Math.floor(Math.max(0, seconds - .55) / 7.35 * glyphs.current.length)));
+  };
+  useEffect(() => { if (!video) setShown(glyphs.current.length); }, [video]);
   const words = glyphs.current.slice(0, shown).join("");
   return (
     <div className="story-open-book">
@@ -237,7 +228,7 @@ function Spread({ left, video, text }: { left: string; video?: string; text?: st
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
-      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" />}
+      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(glyphs.current.length)} onError={() => setShown(glyphs.current.length)} />}
       {text && <p className="story-page-words" dir="rtl" aria-label={text}>
         {words.split("\n").map((line, i) => <span key={i}>{line}</span>)}
       </p>}
