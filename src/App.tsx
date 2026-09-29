@@ -214,11 +214,26 @@ function Spread({ left, video, text, inIllustration = false }: { left: string; v
   // The 11-second film paints the left scene from paper. Real selectable Hebrew is
   // typeset on the right-hand paper and revealed a word at a time with the art.
   const [shown, setShown] = useState(0);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const tokens = useRef((text ?? "").match(/\S+\s*/gu) ?? []);
   const advance = (seconds: number) => {
     setShown(Math.min(tokens.current.length, Math.floor(Math.max(0, seconds - 1.2) / 8.4 * (tokens.current.length + 1))));
   };
-  useEffect(() => { if (!video) setShown(tokens.current.length); }, [video]);
+  useEffect(() => {
+    if (!video) { setShown(tokens.current.length); return; }
+    // A stalled video must not leave the words blank. The poster is the final still.
+    const start = performance.now();
+    const timer = window.setInterval(() => {
+      const elapsed = (performance.now() - start) / 1000;
+      advance(Math.max(elapsed, videoRef.current?.currentTime ?? 0));
+      if (elapsed >= 11.5 && videoRef.current && videoRef.current.currentTime < 10.3 && !videoRef.current.ended) {
+        setVideoFailed(true);
+        setShown(tokens.current.length);
+      }
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [video]);
   const words = tokens.current.slice(0, shown).join("");
   return (
     <div className="story-open-book">
@@ -228,7 +243,7 @@ function Spread({ left, video, text, inIllustration = false }: { left: string; v
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
-      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(tokens.current.length)} onError={() => setShown(tokens.current.length)} />}
+      {video && !videoFailed && <video ref={videoRef} className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(tokens.current.length)} onError={() => { setVideoFailed(true); setShown(tokens.current.length); }} />}
       {text && <p className={`story-page-words${inIllustration ? " story-page-words-illustrated" : ""}`} dir="rtl" aria-label={text}>
         {words.split("\n").map((line, i) => <span key={i}>{line}</span>)}
       </p>}
