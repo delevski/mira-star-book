@@ -225,3 +225,11 @@ footer, .story-footer { display: none; }
 /* the page clip: one video across the open book, above the still halves, under the chrome */
 .story-spread-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 2; pointer-events: none;  }
 .story-spine { z-index: 3; }
+
+/* Animated Hebrew stays on the blank right-hand paper, inside the book. */
+.story-page-words-illustrated {
+  top: 10%; bottom: 10%; right: 3.5%; width: 29.5%; min-height: 0;
+  color: #40394b; font-size: clamp(14px, 2vw, 25px); line-height: 1.5;
+  text-shadow: 0 1px rgba(255,255,255,.65);
+}
+@media (max-height: 560px) { .story-page-words-illustrated { font-size: clamp(14px, 3.5vh, 17px); line-height: 1.36; } }
