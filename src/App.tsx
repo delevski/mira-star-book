@@ -49,9 +49,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
 
   const atCover = idx === 0;
   const atEnd = idx === total - 1;
-  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i}-poster.webp`), [dir, booklet.cover]);
+  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i === 1 ? "3-p1-draw-poster" : `${i}-poster`}.webp`), [dir, booklet.cover]);
   const audioSrc = useCallback((i: number) => (i > 0 && pages[i - 1].audio ? `${dir}/${pages[i - 1].audio}` : null), [dir, pages]);
-  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i}-storybook.mp4` : undefined), [dir, pages]);
+  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i === 1 ? "2-p1-draw" : `${i}-storybook`}.mp4` : undefined), [dir, pages]);
 
   // preload neighbours
   useEffect(() => {
@@ -172,7 +172,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
             ) : atCover ? (
               <ClosedCover booklet={booklet} src={src(0)} />
             ) : (
-              <Spread key={idx} left={src(idx)} video={videoSrc(idx)} text={pages[idx - 1]?.text} />
+              <Spread key={idx} left={src(idx)} video={videoSrc(idx)} text={pages[idx - 1]?.text} inIllustration />
             )}
             {idx < total - 1 && !flip && (
               <div className="story-page-corner corner-left" onClick={(e) => { e.stopPropagation(); forward(); }}>
@@ -190,7 +190,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
       {needsTap && !flip && (
         <button type="button" className="story-listen-button" onClick={listenTap} onTouchEnd={(e) => e.stopPropagation()}>🔊 הַקִּישׁוּ לִשְׁמֹעַ</button>
       )}
-      <div className="story-page-indicator">{idx === 0 ? "כריכה" : `${idx} / ${pages.length}`}</div>
+      <div className="story-page-indicator" dir="ltr">{idx === 0 ? "כריכה" : `${idx} / ${pages.length}`}</div>
       <audio ref={audioRef} preload="metadata" />
       <audio ref={swishRef} src={`${dir}/sfx/flip.mp3`} preload="auto" />
       <RotatePrompt />
@@ -210,16 +210,16 @@ function ClosedCover({ booklet, src }: { booklet: Booklet; src: string }) {
   );
 }
 
-function Spread({ left, video, text }: { left: string; video?: string; text?: string }) {
+function Spread({ left, video, text, inIllustration = false }: { left: string; video?: string; text?: string; inIllustration?: boolean }) {
   // The 11-second film paints the left scene from paper. Real selectable Hebrew is
-  // typeset on the right-hand paper and revealed a grapheme at a time with the art.
+  // typeset on the right-hand paper and revealed a word at a time with the art.
   const [shown, setShown] = useState(0);
-  const glyphs = useRef(Array.from(new Intl.Segmenter("he", { granularity: "grapheme" }).segment(text ?? ""), s => s.segment));
+  const tokens = useRef((text ?? "").match(/\S+\s*/gu) ?? []);
   const advance = (seconds: number) => {
-    setShown(Math.min(glyphs.current.length, Math.floor(Math.max(0, seconds - .55) / 7.35 * glyphs.current.length)));
+    setShown(Math.min(tokens.current.length, Math.floor(Math.max(0, seconds - 1.2) / 8.4 * (tokens.current.length + 1))));
   };
-  useEffect(() => { if (!video) setShown(glyphs.current.length); }, [video]);
-  const words = glyphs.current.slice(0, shown).join("");
+  useEffect(() => { if (!video) setShown(tokens.current.length); }, [video]);
+  const words = tokens.current.slice(0, shown).join("");
   return (
     <div className="story-open-book">
       <div className="story-page story-page-left">
@@ -228,8 +228,8 @@ function Spread({ left, video, text }: { left: string; video?: string; text?: st
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
-      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(glyphs.current.length)} onError={() => setShown(glyphs.current.length)} />}
-      {text && <p className="story-page-words" dir="rtl" aria-label={text}>
+      {video && <video className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" onTimeUpdate={e => advance(e.currentTarget.currentTime)} onEnded={() => setShown(tokens.current.length)} onError={() => setShown(tokens.current.length)} />}
+      {text && <p className={`story-page-words${inIllustration ? " story-page-words-illustrated" : ""}`} dir="rtl" aria-label={text}>
         {words.split("\n").map((line, i) => <span key={i}>{line}</span>)}
       </p>}
       <div className="story-spine" aria-hidden="true" />
