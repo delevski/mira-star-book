@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Page = { image: string; audio?: string; text: string };
+type Page = { image: string; video?: string; audio?: string; text: string };
 type Booklet = {
   icon: string; cover: string; coverBackground: string;
   title: string; coverTitle: string; author: string; pages: Page[];
@@ -51,6 +51,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
   const atEnd = idx === total - 1;
   const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/${pages[i - 1].image}`), [dir, booklet.cover, pages]);
   const audioSrc = useCallback((i: number) => (i > 0 && pages[i - 1].audio ? `${dir}/${pages[i - 1].audio}` : null), [dir, pages]);
+  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/${pages[i - 1].video}` : undefined), [dir, pages]);
 
   // preload neighbours
   useEffect(() => {
@@ -154,9 +155,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
                 {toCover ? (
                   <ClosedCover booklet={booklet} src={src(0)} />
                 ) : fromCover ? (
-                  <Spread left={src(1)} />
+                  <Spread left={src(1)} video={videoSrc(1)} />
                 ) : (
-                  <Spread left={src(flippingTo)} />
+                  <Spread left={src(flippingTo)} video={videoSrc(flippingTo)} />
                 )}
                 <UnderShadow dir={flip.dir} />
                 {/* the turning leaf */}
@@ -171,7 +172,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
             ) : atCover ? (
               <ClosedCover booklet={booklet} src={src(0)} />
             ) : (
-              <Spread left={src(idx)} />
+              <Spread left={src(idx)} video={videoSrc(idx)} />
             )}
             {idx < total - 1 && !flip && (
               <div className="story-page-corner corner-left" onClick={(e) => { e.stopPropagation(); forward(); }}>
@@ -212,8 +213,10 @@ function ClosedCover({ booklet, src }: { booklet: Booklet; src: string }) {
   );
 }
 
-function Spread({ left }: { left: string }) {
-  // one wide 3:1 illustration spanning the two pages of the open book
+function Spread({ left, video }: { left: string; video?: string }) {
+  // one wide 3:1 illustration spanning the two pages of the open book; when the page has a clip,
+  // one video across the whole book paints the illustration, then rests on the finished page
+  // (its last frame is the still underneath, so it never pops)
   return (
     <div className="story-open-book">
       <div className="story-page story-page-left">
@@ -222,6 +225,9 @@ function Spread({ left }: { left: string }) {
       <div className="story-page story-page-right">
         <div className="story-page-clip"><img className="story-spread-image" src={left} alt="" draggable={false} style={{ left: "-100%" }} /></div>
       </div>
+      {video && (
+        <video key={video} className="story-spread-video" src={video} poster={left} muted playsInline autoPlay preload="auto" />
+      )}
       <div className="story-spine" aria-hidden="true" />
     </div>
   );
