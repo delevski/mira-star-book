@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Page = { image: string; audio?: string; text: string };
 type Booklet = {
   icon: string; cover: string; coverBackground: string;
   title: string; coverTitle: string; author: string; pages: Page[];
 };
+type Flip = { dir: "forward" | "backward"; from: number } | null;
+
+const FLIP_MS = 780;
 
 export function App() {
   const [book, setBook] = useState<Booklet | "loading" | "error">("loading");
@@ -36,9 +39,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
   const pages = booklet.pages;
   const total = pages.length + 1; // cover + spreads
   const [idx, setIdx] = useState(0);
-  const [flipping, setFlipping] = useState(false);
-  const [flipDir, setFlipDir] = useState<"forward" | "backward" | null>(null);
+  const [flip, setFlip] = useState<Flip>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const swishRef = useRef<HTMLAudioElement>(null);
   const touchX = useRef<number | null>(null);
   const touchY = useRef<number | null>(null);
   const [needsTap, setNeedsTap] = useState(false);
@@ -78,25 +81,34 @@ function BookletView({ booklet }: { booklet: Booklet }) {
   );
 
   useEffect(() => {
-    if (flipping) return;
+    if (flip) return;
     if (idx <= 0) { lastPlayed.current = -1; stopAudio(); return; }
     playFor(idx);
-  }, [idx, flipping, playFor, stopAudio]);
+  }, [idx, flip, playFor, stopAudio]);
 
-  const settle = (n: number) => { setIdx(n); setFlipping(false); setFlipDir(null); };
+  const swish = useCallback(() => {
+    const el = swishRef.current;
+    if (!el) return;
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  }, []);
+
+  const settle = (n: number) => { setIdx(n); setFlip(null); };
   const forward = () => {
-    if (idx >= total - 1 || flipping) return;
+    if (idx >= total - 1 || flip) return;
     stopAudio(); lastPlayed.current = -1;
-    setFlipDir("forward"); setFlipping(true);
-    setTimeout(() => settle(idx + 1), 720);
+    swish();
+    setFlip({ dir: "forward", from: idx });
+    setTimeout(() => settle(idx + 1), FLIP_MS);
   };
   const backward = () => {
-    if (idx <= 0 || flipping) return;
+    if (idx <= 0 || flip) return;
     stopAudio(); lastPlayed.current = -1;
-    setFlipDir("backward"); setFlipping(true);
-    setTimeout(() => settle(idx - 1), 720);
+    swish();
+    setFlip({ dir: "backward", from: idx });
+    setTimeout(() => settle(idx - 1), FLIP_MS);
   };
-  const restart = () => { if (flipping) return; stopAudio(); lastPlayed.current = -1; setIdx(0); };
+  const restart = () => { if (flip) return; stopAudio(); lastPlayed.current = -1; setIdx(0); };
 
   const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; touchY.current = e.touches[0].clientY; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -121,46 +133,52 @@ function BookletView({ booklet }: { booklet: Booklet }) {
     el.play().catch(() => {});
   };
 
-  const flippingTo = flipDir === "forward" ? idx + 1 : idx - 1;
-  const sheetClass = ["story-book-sheet", atCover && !flipping ? "story-book-closed" : "", flipping ? "story-book-flipping" : ""].filter(Boolean).join(" ");
+  const flippingTo = flip ? (flip.dir === "forward" ? flip.from + 1 : flip.from - 1) : idx;
+  const toCover = flip && flippingTo === 0;
+  const fromCover = flip && flip.from === 0;
 
   return (
     <div className="story-booklet-view" dir="rtl">
       <div className="story-top-bar">
         <h2 className="story-title">{booklet.icon} {booklet.title}</h2>
         {atEnd && !atCover && (
-          <button type="button" className="story-restart-button" onClick={restart} disabled={flipping}>חזור להתחלה</button>
+          <button type="button" className="story-restart-button" onClick={restart} disabled={!!flip}>חזור להתחלה</button>
         )}
       </div>
       <div className="story-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={onClick}>
-        <div className={atCover && !flipping ? "story-book-perspective story-book-perspective-closed" : "story-book-perspective"}>
-          <div className={sheetClass}>
-            {flipping ? (
+        <div className="story-book-perspective">
+          <div className={atCover && !flip ? "story-book-sheet story-book-closed" : "story-book-sheet"}>
+            {flip ? (
               <>
-                {/* static under-layer: where we are going */}
-                {flippingTo === 0 ? (
+                {/* underneath: where we are going */}
+                {toCover ? (
                   <ClosedCover booklet={booklet} src={src(0)} />
-                ) : flippingTo > idx ? (
-                  <Spread left={src(Math.max(1, flippingTo))} />
+                ) : fromCover ? (
+                  <Spread left={src(1)} />
                 ) : (
-                  <Spread left={src(Math.max(1, flippingTo))} />
+                  <Spread left={src(flippingTo)} />
                 )}
-                {/* the turning sheet */}
-                <div className={flipDir === "forward" ? "story-flip-layer page-flip-forward" : "story-flip-layer page-flip-backward"}>
-                  {idx === 0 ? <ClosedCover booklet={booklet} src={src(0)} /> : <Spread left={src(idx)} />}
-                </div>
+                <UnderShadow dir={flip.dir} />
+                {/* the turning leaf */}
+                {fromCover ? (
+                  <CoverLeaf booklet={booklet} src={src(0)} opening />
+                ) : toCover ? (
+                  <CoverLeaf booklet={booklet} src={src(0)} opening={false} />
+                ) : (
+                  <PageLeaf dir={flip.dir} img={src(flip.from)} />
+                )}
               </>
             ) : atCover ? (
               <ClosedCover booklet={booklet} src={src(0)} />
             ) : (
               <Spread left={src(idx)} />
             )}
-            {idx < total - 1 && !flipping && (
+            {idx < total - 1 && !flip && (
               <div className="story-page-corner corner-left" onClick={(e) => { e.stopPropagation(); forward(); }}>
                 <div className="story-corner-fold corner-fold-left" />
               </div>
             )}
-            {idx > 0 && !flipping && (
+            {idx > 0 && !flip && (
               <div className="story-page-corner corner-right" onClick={(e) => { e.stopPropagation(); backward(); }}>
                 <div className="story-corner-fold corner-fold-right" />
               </div>
@@ -168,14 +186,15 @@ function BookletView({ booklet }: { booklet: Booklet }) {
           </div>
         </div>
       </div>
-      {!atCover && !flipping && pages[idx - 1]?.text && (
+      {!atCover && pages[idx - 1]?.text && (
         <div className="story-text-strip">{pages[idx - 1].text.split("\n").map((ln, i) => <p key={i}>{ln}</p>)}</div>
       )}
-      {needsTap && !flipping && (
+      {needsTap && !flip && (
         <button type="button" className="story-listen-button" onClick={listenTap} onTouchEnd={(e) => e.stopPropagation()}>🔊 הַקִּישׁוּ לִשְׁמֹעַ</button>
       )}
       <div className="story-page-indicator">{idx === 0 ? "כריכה" : `${idx} / ${pages.length}`}</div>
       <audio ref={audioRef} preload="metadata" />
+      <audio ref={swishRef} src={`${dir}/sfx/flip.mp3`} preload="auto" />
       <RotatePrompt />
     </div>
   );
@@ -206,6 +225,50 @@ function Spread({ left }: { left: string }) {
       <div className="story-spine" aria-hidden="true" />
     </div>
   );
+}
+
+/* the turning half-page: front shows half of the current spread, back is paper */
+function PageLeaf({ dir, img }: { dir: "forward" | "backward"; img: string }) {
+  // forward (RTL): the LEFT half turns over the spine to the right; backward: the RIGHT half turns back left
+  const half = dir === "forward" ? "left" : "right";
+  return (
+    <div className={`story-leaf story-leaf-${half} ${dir === "forward" ? "leaf-turn-forward" : "leaf-turn-backward"}`}>
+      <div className="story-leaf-face story-leaf-front">
+        <div className="story-page-clip">
+          <img className="story-spread-image" src={img} alt="" draggable={false} style={half === "left" ? { left: "0" } : { left: "-100%" }} />
+        </div>
+        <div className="story-leaf-shade" />
+      </div>
+      <div className="story-leaf-face story-leaf-back">
+        <div className="story-leaf-back-shade" />
+      </div>
+    </div>
+  );
+}
+
+/* cover swing: opening turns the closed cover around its spine; closing brings it back */
+function CoverLeaf({ booklet, src, opening }: { booklet: Booklet; src: string; opening: boolean }) {
+  return (
+    <div className={`story-cover-leaf ${opening ? "cover-open-anim" : "cover-close-anim"}`}>
+      <div className="story-leaf-face story-leaf-front">
+        <div className="story-closed-cover story-cover-inleaf" style={{ backgroundColor: booklet.coverBackground }}>
+          <img className="story-cover-image" src={src} alt="" draggable={false} />
+          <div className="story-cover-text">
+            <p className="story-cover-title">{booklet.coverTitle}</p>
+            <p className="story-cover-author">{booklet.author}</p>
+          </div>
+        </div>
+        <div className="story-leaf-shade" />
+      </div>
+      <div className="story-leaf-face story-leaf-back">
+        <div className="story-leaf-back-shade" />
+      </div>
+    </div>
+  );
+}
+
+function UnderShadow({ dir }: { dir: "forward" | "backward" }) {
+  return <div className={`story-under-shadow ${dir === "forward" ? "under-shadow-forward" : "under-shadow-backward"}`} aria-hidden="true" />;
 }
 
 function RotatePrompt() {
