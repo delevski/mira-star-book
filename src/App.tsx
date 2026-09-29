@@ -51,7 +51,7 @@ function BookletView({ booklet }: { booklet: Booklet }) {
   const atEnd = idx === total - 1;
   const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i === 1 ? "3-p1-draw-poster" : i === 2 ? "2-p2-draw-poster" : `${i}-poster`}.webp`), [dir, booklet.cover]);
   const audioSrc = useCallback((i: number) => (i > 0 && pages[i - 1].audio ? `${dir}/${pages[i - 1].audio}` : null), [dir, pages]);
-  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i === 1 ? "2-p1-draw" : i === 2 ? "1-p2-draw" : `${i}-storybook`}.mp4` : undefined), [dir, pages]);
+  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i === 1 ? "2-p1-draw" : i === 2 ? "1-p2-draw" : i === 7 ? "4-7-draw-v9" : `${i}-storybook`}.mp4` : undefined), [dir, pages]);
 
   // preload neighbours
   useEffect(() => {
