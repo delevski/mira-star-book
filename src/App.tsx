@@ -49,9 +49,9 @@ function BookletView({ booklet }: { booklet: Booklet }) {
 
   const atCover = idx === 0;
   const atEnd = idx === total - 1;
-  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i === 1 ? "3-p1-draw-poster" : i === 2 ? "2-p2-draw-poster" : i === 4 ? "3-4-layered-poster" : i === 5 ? "5-5-layered-poster" : `${i}-poster`}.webp`), [dir, booklet.cover]);
+  const src = useCallback((i: number) => (i === 0 ? `${dir}/${booklet.cover}` : `${dir}/clips/${i === 1 ? "3-p1-draw-poster" : i === 2 ? "2-p2-draw-poster" : i === 4 ? "3-4-layered-poster" : i === 5 ? "5-5-layered-poster" : i === 6 ? "7-6-layered-poster" : `${i}-poster`}.webp`), [dir, booklet.cover]);
   const audioSrc = useCallback((i: number) => (i > 0 && pages[i - 1].audio ? `${dir}/${pages[i - 1].audio}` : null), [dir, pages]);
-  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i === 1 ? "2-p1-draw" : i === 2 ? "1-p2-draw" : i === 3 ? "1-mira-p3-approved-v15" : i === 7 ? "4-7-draw-v9" : i === 4 ? "1-4-layered-v1" : i === 5 ? "4-5-layered-v1" : `${i}-storybook`}.mp4` : undefined), [dir, pages]);
+  const videoSrc = useCallback((i: number) => (i > 0 && pages[i - 1].video ? `${dir}/clips/${i === 1 ? "2-p1-draw" : i === 2 ? "1-p2-draw" : i === 3 ? "1-mira-p3-approved-v15" : i === 7 ? "4-7-draw-v9" : i === 4 ? "1-4-layered-v1" : i === 5 ? "4-5-layered-v1" : i === 6 ? "6-6-layered-v1" : `${i}-storybook`}.mp4` : undefined), [dir, pages]);
 
   // preload neighbours
   useEffect(() => {
